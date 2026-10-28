@@ -1,0 +1,13 @@
+{
+  "name": "latex-qr-quine-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@zxing/library": "0.21.3",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0"
+  }
+}

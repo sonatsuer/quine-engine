@@ -1,0 +1,10 @@
+# The pip packages of the virtual environment .venv (see README.md):
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# miniaudio plays the modem and spectrogram quines; numpy, Pillow and zxing-cpp run the
+# spectrogram quine's check.
+cffi==2.1.1
+miniaudio==1.71
+numpy==2.5.4
+pillow==13.0.0
+pycparser==3.12
+zxing-cpp==3.1.1

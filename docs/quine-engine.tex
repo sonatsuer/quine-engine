@@ -1,0 +1,699 @@
+\documentclass[11pt]{amsart}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\disp}{\mathrm{disp}}
+\newcommand{\sub}{\mathrm{sub}}
+\newcommand{\rend}{\rho}
+\newcommand{\scan}{\sigma}
+\newcommand{\M}{M}
+\newcommand{\pa}{\rightharpoonup}
+\newcommand{\lean}[1]{\texttt{#1}}
+
+\setlist[description]{font=\normalfont\itshape, leftmargin=1.5em, itemsep=1pt}
+
+\title{Generalized Quines}
+
+\author{Sonat S\"uer}
+
+% amsart puts \date in a footnote; print it under the author instead.
+\date{}
+\makeatletter
+\g@addto@macro\@setauthors{\par\vspace{0.5\baselineskip}{\centering\small\today\par}}
+\makeatother
+
+\begin{document}
+
+\begin{abstract}
+A quine is a program that prints its own source. A generalized quine is a program whose output,
+which may be an object of another kind, decodes back to the program. We give two hypotheses under
+which an explicit text is a generalized quine; the proof follows Ershov's construction of fixed
+points. The theorem is formalized in Lean~4, which computes the quine and proves it correct. We
+provide
+several examples.
+\end{abstract}
+
+\maketitle
+
+\section{Fixed points and quines}\label{sec:motivation}
+
+This section recalls how quines follow from Kleene's recursion theorem and records what the
+argument actually uses. It then turns that into a fixed point theorem for generalized quines.
+
+\subsection{Quines and the recursion theorem}
+
+A \emph{quine} is a program that prints its own source text. Fix an acceptable numbering
+$(\varphi_n)_{n \in \mathbb{N}}$ of the partial computable functions. Kleene's second recursion
+theorem~\cite{Kleene38} states that for every total computable $f \colon \mathbb{N} \to
+\mathbb{N}$ there is an $e \in \mathbb{N}$ with $\varphi_e = \varphi_{f(e)}$.
+
+Quines exist by a single application of the theorem. Indeed, if $p$ is the total computable function
+given by the $s$-$m$-$n$ theorem such that
+$\varphi_{p(n)}$ is the constant function with value $n$, then a fixed point $e$ of $p$ satisfies
+$\varphi_e = \varphi_{p(e)}$, so the program $e$ outputs $e$.
+
+\subsection{What the argument uses}
+
+Two features of this argument suggest a generalization. First, the output $e$ is compared with the
+program $e$ only by equality. Nothing changes if programs output objects of some other kind,
+pictures for instance, provided that an object can be read back as a program. So codes and outputs
+need not live in the same set. Second, the argument does not need a Turing complete language. It
+uses that the program printing $n$ can be computed from $n$. It also uses the two properties of
+the numbering that make the recursion theorem work.
+
+Ershov isolated these properties~\cite{Ershov73}. A \emph{numbering} of a set $Y$ is a surjection
+$\gamma \colon \mathbb{N} \to Y$. It is \emph{precomplete} if for every partial computable
+$\psi$ there is a total computable $g$ with $\gamma(g(n)) = \gamma(\psi(n))$ whenever $\psi(n)$ is
+defined.
+
+\begin{theorem}[Ershov~\cite{Ershov73}]\label{thm:ershov}
+Let $\gamma$ be a precomplete numbering and $f \colon \mathbb{N} \to \mathbb{N}$ a total computable
+function. Then there exists $n \in \mathbb{N}$ with $\gamma(f(n)) = \gamma(n)$.
+\end{theorem}
+
+For the numbering $n \mapsto \varphi_n$ this is Kleene's theorem.
+
+The fixed point in Ershov's proof is an explicit expression. Precompleteness provides a total
+computable function $g$ with $\gamma(g(\langle c,x \rangle)) =
+\gamma(\varphi_c(x))$ whenever $\varphi_c(x)$ is defined. If $a$ is an index of the total function
+$x \mapsto f(g(\langle x,x \rangle))$, then the fixed point is $n = g(\langle a,a \rangle)$. The
+hypotheses below ask only for what this
+expression needs, at the one point where it is used.
+
+\subsection{Representation systems}
+
+Throughout, a partial map $f \colon X \pa Y$ is written as a map. An equation $f(x) = y$ asserts
+that $f(x)$ is defined and equal to $y$.
+
+\begin{definition}\label{def:system}
+A \emph{representation system} $\mathcal{S} = (T, P, \disp, \rend, \scan)$ consists of sets $T$ and
+$P$, a relation $\disp \subseteq T \times P$, a map $\rend \colon T \to P$ and a partial map $\scan
+\colon P \pa T$ such that
+\[
+  \scan(\rend(t)) = t \quad \text{for all } t \in T.
+\]
+The elements of $T$ are \emph{texts} and the elements of $P$ are \emph{representations}. We read
+$\disp(t,p)$ as ``$t$ displays as $p$'', $\rend$ as rendering and $\scan$ as scanning.
+\end{definition}
+
+The relation $\disp$ need not be functional or total, so a text may display as nothing (it fails or
+does not terminate) or as several representations. Nothing about $P$ or $\disp$ has to be
+computable.
+
+\begin{definition}\label{def:meaning}
+Let $\mathcal{S}$ be a representation system. For $t \in T$ the \emph{meaning} of $t$ is the set
+\[
+  \M(t) = \{\, s \in T : \text{there exists } p \in P \text{ with } \disp(t,p) \text{ and } \scan(p)
+  = s \,\}.
+\]
+We say that $t$ \emph{means} $s$ when $s \in \M(t)$. A text $e$ is a \emph{generalized quine} if $e
+\in \M(e)$.
+\end{definition}
+
+Since $\scan(\rend(e)) = e$, a generalized quine need not display as its own rendering. It is enough
+that it displays as something which the scanner reads as $e$.
+
+\begin{example}\label{ex:classical}
+Let $T = P$ be the set of strings over an alphabet, with $\rend$ and $\scan$ the identity. Let
+$\disp(t,o)$ hold when the program $t$ terminates and prints $o$. Then $\M(t)$ is the set of outputs
+of $t$. So a generalized quine is a quine in the usual sense.
+\end{example}
+
+\subsection{The hypotheses}
+
+The first hypothesis says that rendering can be carried out inside the language. It plays the role
+of the computable map $p$ above.
+
+\begin{definition}\label{def:quotation}
+A \emph{quotation} for $\mathcal{S}$ is a pair $(D, q)$ of a subset $D \subseteq T$ and a map $q
+\colon T \to T$ such that for every $t \in D$ there exists $p \in P$ with
+\[
+  \disp(q(t), p) \quad \text{and} \quad \scan(p) = \scan(\rend(t)).
+\]
+\end{definition}
+
+The text $q(t)$ is a program which draws $t$, or at least draws something that scans like the
+rendering of $t$. The set $D$ records where this is possible. When representations have a bounded
+capacity, for instance, $D$ contains only the texts that are short enough to be rendered.
+
+\begin{lemma}\label{lem:section}
+If $(D,q)$ is a quotation, then $t \in \M(q(t))$ for every $t \in D$.
+\end{lemma}
+
+\begin{proof}
+For $t \in D$, the representation $p$ of Definition~\ref{def:quotation} satisfies $\disp(q(t),p)$
+and $\scan(p) = \scan(\rend(t)) = t$.
+\end{proof}
+
+The second hypothesis replaces the totalized universal function and the index $a$ of Ershov's
+construction.
+
+\begin{definition}\label{def:diagonal}
+Let $(D,q)$ be a quotation for $\mathcal{S}$. A \emph{diagonal datum} for $(D,q)$ is a triple
+$(\sub, a, O)$ of a map $\sub \colon T \times T \to T$, a text $a \in T$ and a subset $O \subseteq
+T$ such that
+\begin{equation}\label{eq:diagonal}
+  \M\bigl(q(\sub(x,x))\bigr) \subseteq \M\bigl(\sub(a,x)\bigr) \quad \text{for all } x \in O.
+\end{equation}
+We call $\sub$ the \emph{substitution}, $a$ the \emph{template} and $O$ the \emph{side condition}.
+\end{definition}
+
+We think of $\sub(c,x)$ as the text that runs the code $c$ on the data $x$.
+Condition~\eqref{eq:diagonal} says that the template run on $x$ means everything that the quotation
+of the diagonal $\sub(x,x)$ means. The set $O$ restricts the data, typically to the texts that can
+be embedded in a program without escaping.
+
+\subsection{The minimal fixed point theorem}
+
+\begin{theorem}\label{thm:minimal}
+Let $(D,q)$ be a quotation for $\mathcal{S}$ and $(\sub,a,O)$ a diagonal datum for it. Put $e =
+\sub(a,a)$. If $a \in O$ and $e \in D$, then $e$ is a generalized quine.
+\end{theorem}
+
+\begin{proof}
+Since $e \in D$, Lemma~\ref{lem:section} gives $e \in \M(q(e))$. Since $a \in O$,
+condition~\eqref{eq:diagonal} with $x = a$ reads $\M(q(e)) \subseteq \M(e)$, because $\sub(a,a) =
+e$. Hence $e \in \M(e)$.
+\end{proof}
+
+\begin{remark}\label{rem:ershov}
+The fixed point $e = \sub(a,a)$ is Ershov's expression $g(\langle a,a\rangle)$. The substitution
+plays
+the role of $g(\langle \cdot,\cdot \rangle)$. The template plays the role of an index of $x \mapsto
+q(\sub(x,x))$. Condition~\eqref{eq:diagonal} is used only at $x = a$ and only in one direction, so
+it can be verified for a single text in a language with no universal function at all. The
+hypothesis $e \in D$ is a genuine condition when representations have a finite capacity: the fixed
+point must itself be short enough to be rendered.
+\end{remark}
+
+In the setting of Example~\ref{ex:classical}, Theorem~\ref{thm:minimal} produces a quine in the
+usual sense. In general it produces a text whose output, in whatever form the representations take,
+scans back to the text.
+
+\section{The theorem as a mechanism}\label{sec:mechanism}
+
+Theorem~\ref{thm:minimal} can be read as a machine. Its inputs are the hypotheses. Its output is an
+explicit text together with the guarantee that it is a generalized quine. This section lists the
+inputs and works through one example. The proofs that the example satisfies the hypotheses are in
+the formalization of Section~\ref{sec:lean}.
+
+\subsection{Inputs and output}
+
+The inputs are the following.
+\begin{enumerate}[label=(I\arabic*)]
+\item A representation system $(T, P, \disp, \rend, \scan)$: what texts are, what they display as,
+and how representations are read back.
+\item A quotation $(D, q)$: for each text $t \in D$, a program $q(t)$ that draws $t$.
+\item A diagonal datum $(\sub, a, O)$: a way of running code on data, together with a template $a$
+which, run
+on data $x \in O$, behaves like the quotation of $\sub(x,x)$.
+\item The two side conditions $a \in O$ and $\sub(a,a) \in D$.
+\end{enumerate}
+The output is the text $e = \sub(a,a)$, a generalized quine.
+
+\subsection{An example: a program that prints itself in braille}\label{sec:braille-example}
+
+Consider a language, such as Python, with string literals and a way to run a string as code. We
+want a program that prints its own source in the North American Computer Braille Code (NABCC), the
+8-dot code of refreshable braille displays. Its output is not its own text. So it is a generalized
+quine but not a quine. The inputs are as follows.
+
+\begin{description}
+\item[Texts and representations] The set $T$ consists of strings of characters. The set
+$P$ consists of finite lists of braille cells, where the blank cell counts as a cell. A text
+displays as what the program prints. Rendering
+$\rend$ replaces each
+character by its braille cell. Scanning $\scan$ reads the cells back.
+\item[Quotation] For a text $t$, the program $q(t)$ stores $t$ as data and hands it to a fixed
+library $L$ that prints text in braille. So $q(t)$ prints $\rend(t)$. The domain $D$ is the texts
+in the characters that have cells.
+\item[Substitution] The program $\sub(c,x)$ stores the text $x$ as data and then runs $c$ as code,
+with access to the data. The side condition $O$ is the texts that can be stored without escaping.
+\item[Template] The program $a$ rebuilds the text $\sub(x,x)$ from its data $x$ and hands it to
+$L$. So $\sub(a,x)$ prints $\rend(\sub(x,x))$, which is also what $q(\sub(x,x))$ prints.
+\end{description}
+
+The library avoids the characters that need escaping, so $a \in O$. The fixed point uses only
+characters that have cells, so $e \in D$. The output $e = \sub(a,a)$ is a program that stores the
+code $a$ as data and runs it. Hence it prints $\rend(e)$, its own source in braille.
+
+\section{The Lean development}\label{sec:lean}
+\sloppy
+
+This section describes the formalization in general: the engine, how a language is plugged into it,
+what is proved, and what is trusted. The development uses Lean~4~\cite{Lean4} with its core library
+only, toolchain version 4.24.0. It lives in the directory \lean{lean/} of the accompanying
+repository.
+
+\subsection{The engine}
+
+The module \lean{QuineEngine.Engine} formalizes Section~\ref{sec:motivation}. A representation
+system is the structure \lean{System T P}. Its field \lean{disp} has type
+\lean{T}~$\to$~\lean{P}~$\to$~\lean{Prop}, so representations never have to be computed. Its field
+\lean{scan} takes values in \lean{Option T}. The predicates \lean{Means} and \lean{IsQuine}
+are Definition~\ref{def:meaning}. The hypotheses are structures whose fields
+are definitions and proofs. The structure \lean{Quotation} is Definition~\ref{def:quotation}, with
+fields \lean{Dom}, \lean{q} and \lean{disp\_q}. The structure \lean{Diagonal} is
+Definition~\ref{def:diagonal}, with fields \lean{sub},
+\lean{a}, \lean{Ok} and \lean{spec}. The lemma \lean{Quotation.means\_q} is
+Lemma~\ref{lem:section}.
+
+The mechanism of Section~\ref{sec:mechanism} is the pair of an ordinary definition and a theorem:
+\begin{center}\small
+\lean{Diagonal.quine D = D.sub D.a D.a},\\
+\lean{Diagonal.isQuine D :} \lean{D.Ok D.a} $\to$ \lean{Q.Dom D.quine} $\to$
+\lean{S.IsQuine D.quine}.
+\end{center}
+So an instance of the structures for a language outputs the text of a generalized quine, which
+Lean can evaluate. It also outputs a proof that the text is a generalized quine. The engine depends
+on no axiom.
+
+\subsection{Instances}
+
+A language is plugged in through a \emph{file model}: a parser that recognizes the files of a fixed
+shape, an expression fragment with its evaluation, and the substitution, quotation and template
+written in that shape. Files of any other shape display as nothing, so the model is conservative.
+Its display relation states what the real language does on the files it accepts, typically that the
+file shows the rendering of the value of an expression handed to a library. Several instances share
+a file model, one for each of Python, SVG with JavaScript, PostScript, gnuplot, pdf\LaTeX, OpenSCAD,
+G-code and Verilog.
+
+The library of an instance, the code in the language that does the drawing, is read from a separate
+file by \lean{include\_str}, so it is an opaque text to the model. The concrete facts that an
+instance needs, such as $a \in O$, $e \in D$, or that the template parses to the expected
+expression, are closed by computation with \lean{decide +kernel}.
+
+The representations come in two kinds.
+\begin{description}
+\item[Concrete] Rendering and scanning are Lean functions, for instance a table of braille cells,
+Morse codes, serial frames or glyphs. Lean proves
+that scanning inverts rendering.
+\item[Abstract] Lean works with a structure \lean{Codec}: a capacity $C$, a type of grids, an
+encoder and a decoder, with a proof that decoding inverts encoding on texts of length at most $C$.
+The theorem then holds for every codec of sufficient capacity, and no particular encoder is
+formalized.
+\end{description}
+In both kinds, a text outside the alphabet or above the capacity is rendered as a formal
+representation that no file displays as. This makes $\scan \circ \rend$ the identity on all texts,
+while files only display representations that the real program can produce.
+
+The executable \lean{lake exe quine} evaluates every fixed point and writes it into the folder of
+its instance, together with, for the concrete representations, the representation that Lean
+predicts.
+
+\subsection{What is proved}
+
+For every instance, the development proves a theorem \lean{quine\_correct} of one of two forms.
+For a concrete representation it is
+\[
+  \lean{system.IsQuine quine},
+\]
+with no hypotheses. For an abstract representation it is
+\[
+  \forall\, Q : \lean{Codec},\ C_0 \le Q.C \to \lean{(system Q).IsQuine quine},
+\]
+where $C_0$ is the capacity that the instance's library is meant to have. Each theorem is obtained
+from \lean{Diagonal.isQuine} and depends only on the axioms \lean{propext} and \lean{Quot.sound}.
+
+\subsection{What is trusted}
+
+A proof about a model says nothing about the real program unless the model is faithful. The
+following are trusted.
+\begin{enumerate}
+\item The Lean kernel and the compiled executable that writes the quines to disk.
+\item The file model: the real language behaves on files of the modelled shape as the display
+relation says.
+\item The library: it realizes the rendering, that is, it draws, prints or plays what $\rend$
+prescribes. For an abstract representation, the library implements a codec of capacity at least
+$C_0$.
+\item The physical display, when there is one: screen, printer, speaker, laser cutter or 3D printer.
+\end{enumerate}
+
+\subsection{What is tested}
+
+Each instance whose display relation is a model of a real language comes with a check, which runs
+the real tools outside the proof. The checks run the fixed point and, on random texts, the
+quotation, in the real language. They compare the output with
+the representation that Lean predicts, or decode it with independent decoders. Then they read it
+back to the text. These tests are evidence for the trusted items~(2) and~(3); they are not part of
+the
+proof.
+
+\fussy
+\section{The examples}\label{sec:examples}
+
+This section describes the nineteen instances. For each it says what the quine does and gives the
+inputs of
+Section~\ref{sec:mechanism} and the form of the theorem, followed by notes. Throughout, $L$ denotes
+the instance's library. The letter $E$ denotes the expression of the template, which rebuilds
+$\sub(v,v)$ from the variable holding the data. Sizes are those of the generated files.
+
+\subsection{Underload}
+Underload is a small stack language whose programs are strings of one-character commands acting on
+a stack of strings. The quine is the ordinary quine \verb|(:aSS):aSS|.
+\begin{description}
+\item[Representation] Texts and representations are strings. A program displays as what it
+prints. Rendering and scanning are identities, as in Example~\ref{ex:classical}.
+\item[Inputs] The quotation is $q(t) = $ \verb|(|$t$\verb|)S|. The substitution is $\sub(c,x)
+= $ \verb|(|$x$\verb|)|$c$. The template is $a = $ \verb|:aSS|. Both the side condition $O$
+and the domain $D$ are the strings with balanced parentheses.
+\item[Theorem] Unconditional.
+\item[Notes] The display relation is what an interpreter for the language, written in Lean with
+fuel, prints. So, unlike most of the examples, nothing about the display is trusted.
+\end{description}
+
+\subsection{An SVG file that draws a QR code of itself}
+The file \lean{qr-code.svg} (1,822 bytes) runs a script that draws a QR code whose payload is the
+file.
+\begin{description}
+\item[Representation] A QR code, version 31, level L, byte mode, through an abstract codec.
+\item[Inputs] Files have the shape
+\begin{center}
+\verb|<svg ...><script>v="x";eval(arg)</script></svg>|.
+\end{center}
+The quotation $q(t)$ binds $t$ with \verb|\xHH| escapes and evaluates
+$L$\verb|;drawQR(v)|. The substitution $\sub(c,x)$ binds $x$ and evaluates $c$, or \verb|v| when $c
+= x$. The template $a$ is $L$\verb|;drawQR(E)|. The side condition $O$ is the texts that are safe
+to embed raw. The domain $D$ is the Latin-1 texts within the capacity.
+\item[Theorem] Relative to a codec of capacity at least 1,840.
+\item[Notes] The script contains no \verb|<|, \verb|&| or \verb|]]>|, so the XML parser passes it
+through unchanged, which makes the model faithful.
+\end{description}
+
+\subsection{A formula that plots itself}
+A two-line text \verb|0<E,k=| over the decimal value of $k$ denotes the set of points $(x,y) \in
+\mathbb{N}^2$ with $0 < E(x,y,k)$, where $E$ is an arithmetic term. The quine (807 bytes) is a
+formula whose solution set is exactly the typesetting of its own text, constant included.
+\begin{description}
+\item[Representation] Subsets of $\mathbb{N}^2$. Rendering typesets the two lines with a $3 \times
+5$ font, right-aligned; scanning reads the glyphs back.
+\item[Inputs] The quotation $q(t)$ is a formula whose constant interleaves the lines of $t$. The
+substitution $\sub(c,x)$ is the formula with first line $c$ and constant the number written by $x$.
+The template $a$ is the first line \verb|0<E,k=|. The side condition $O$ requires both lines of
+$\sub(x,x)$ to fit. The domain $D$ is the two-line texts that are
+well formed.
+\item[Theorem] Unconditional.
+\item[Notes] The idea goes back to Tupper's self-referential formula~\cite{Tupper}, whose plot
+shows the formula itself. Tupper's formula draws itself only in a strip, and its constant is
+supplied from outside. Here the constant is part of the formula and appears in the picture. The
+formula is plotted over the whole quadrant. The display relation is the
+solution set, which Lean defines from the formula itself. So, unlike most of the examples, nothing
+about the display is trusted.
+\end{description}
+
+\subsection{A PostScript file that prints a QR code of itself}
+The file prints a page with a QR code of itself; it is \lean{qr-code.ps}, of 2,820 bytes.
+\begin{description}
+\item[Representation] A QR code of version 40, level L, byte mode and mask 0,
+through an abstract codec.
+\item[Inputs] Files are \verb|%!PS| followed by one of
+\begin{center}
+\verb|(x)dup cvx exec|, \quad \verb|(x)(c)cvx exec|, \quad \verb|<hex>(c)cvx exec|.
+\end{center}
+The quotation $q(t)$ pushes $t$ in hexadecimal and runs $L$\verb| Q showpage|. The substitution
+$\sub(c,x)$ pushes $x$ and runs $c$, or \verb|dup cvx exec| when $c = x$. The template $a$ is $L$
+followed by a
+tail of hexadecimal strings, \verb|exch| and \verb|cat| that rebuilds the file, then
+\verb|Q showpage|. The side condition $O$ is printable ASCII without backslash and with balanced
+parentheses. The domain $D$ is the Latin-1 texts within the capacity.
+\item[Theorem] Relative to a codec of capacity at least 2,953.
+\item[Notes] The code sits in a \verb|(...)| string, which is why it must have balanced
+parentheses and no backslash.
+\end{description}
+
+\subsection{A gnuplot script that plots a QR code of itself}
+The script \lean{qr-code.gp} (2,214 bytes) plots a QR code of itself.
+\begin{description}
+\item[Representation] A QR code, version 40, level L, byte mode, mask 0, through an abstract
+codec.
+\item[Inputs] Files have the shape \verb|v=LIT;eval ARG|. The quotation $q(t)$ binds $t$ in octal
+escapes and evaluates \verb|s=v;|$L$. The substitution $\sub(c,x)$ binds $x$ and evaluates $c$, or
+\verb|v| when $c = x$. The template $a$ is \verb|s=E;|$L$. The side condition $O$ is printable
+ASCII without \verb|'|. The domain $D$ is the printable texts within the
+capacity.
+\item[Theorem] Relative to a codec of capacity at least 2,953.
+\item[Notes] The encoder is written in gnuplot. The code sits in a \verb|'...'| literal, so it
+writes \verb|'| as \verb|sprintf("%c",39)|. It is one line long because gnuplot literals cannot
+span lines. Gnuplot has no character-code function, so a character's code is its position in a
+string of the printable characters. Routines that write arrays are strings run with
+\verb|eval|.
+\end{description}
+
+\subsection{A pdf\LaTeX{} file that typesets a color QR code of itself}
+The file \lean{qr-code.tex} (6,430 bytes) typesets a color QR code of itself as a grid of colored
+cells, each carrying a Greek letter or an operator.
+\begin{description}
+\item[Representation] Three QR codes, version 40, level L, one in each RGB channel, through an
+abstract codec of three times the capacity. Scanning separates the channels, decodes each and
+concatenates.
+\item[Inputs] Files have the shape $\mathit{PRE}\,x$\verb+|+, where $\mathit{PRE}$ reads every byte
+up to \verb+|+ verbatim and runs the captured code $x$. The template is \verb|\iffalse|
+$\mathit{PRE}$ \verb|\fi|, then $L$, then a part that rebuilds the file, splits it into thirds and
+encodes them. The quotation is a second, octal-encoded code that outputs a fixed text. The side
+condition $O$ is the printable texts without \verb+|+ that hold a copy of $\mathit{PRE}$. The domain
+$D$ is the printable texts
+within the capacity.
+\item[Theorem] Relative to a codec of capacity at least 8,859.
+\item[Notes] The template reads $\mathit{PRE}$ back from its \verb|\iffalse| copy instead of
+rebuilding it from character codes. The expl3 encoder is golfed from about 8~KB to about 5~KB;
+without these two measures the file needed four QR codes. The page uses about 4.2 of the 5 million
+words of pdf\TeX's main memory, which is why the cells avoid math mode and boxes. The kernel
+computations are split along the file's own concatenations, so that each piece reduces without
+exhausting the kernel's stack.
+\end{description}
+
+\subsection{An SVG file that draws its own source}
+The file \lean{text.svg} (1,178 bytes) draws its own source as pixels.
+\begin{description}
+\item[Representation] Bitmaps. Rendering typesets the text with the $5 \times 7$ X11 misc-fixed
+font, 80 characters a row; scanning reads every cell back with the same font.
+\item[Inputs] The SVG file model, with $L$\verb|;drawText(E)| as the template. The side condition
+$O$ is the texts that are safe to embed raw. The domain $D$ is the printable texts that do not
+end in a space.
+\item[Theorem] Unconditional: Lean proves that scanning inverts typesetting, so no decoder is
+trusted.
+\end{description}
+
+\subsection{An SVG file that draws a color QR code of itself}
+The file \lean{color-qr.svg} (2,045 bytes) draws a color QR code of itself.
+\begin{description}
+\item[Representation] Three QR codes, version 31, level L, overlaid in the red, green and blue
+channels, through an abstract codec.
+\item[Inputs] The SVG file model, with $L$\verb|;drawColorQR(E)| as the template.
+\item[Theorem] Relative to a codec of capacity at least 5,520, three times 1,840.
+\end{description}
+
+\subsection{A PostScript file that prints a color QR code of itself}
+The file \lean{color-qr.ps} (3,192 bytes) prints the color QR code of the previous example.
+\begin{description}
+\item[Representation] As for the SVG color QR code.
+\item[Inputs] The PostScript file model, with the template of the PostScript QR code.
+\item[Theorem] Relative to a codec of capacity at least 5,520.
+\item[Notes] Each module is 3 points, so the symbol fits on A4 and Letter paper.
+\end{description}
+
+\subsection{An SVG file that draws an Aztec code of itself}
+The file \lean{aztec.svg} (2,072 bytes) draws a full-range Aztec code, 32 layers
+and $151 \times 151$ modules, of itself.
+\begin{description}
+\item[Representation] An Aztec code, through an abstract codec.
+\item[Inputs] The SVG file model, with $L$\verb|;drawAztec(E)| as the template.
+\item[Theorem] Relative to a codec of capacity at least 2,278, the most bytes that fit in 32 layers
+with at least 3 error-correction codewords whatever the bit stuffing.
+\item[Notes] The encoder avoids \verb|<|, \verb|&|, \verb|"| and backslash, so shifts become
+divisions by powers of two and masks become \verb|%|.
+\end{description}
+
+\subsection{A PostScript file that prints an Aztec code of itself}
+The file \lean{aztec.ps} (2,026 bytes) prints the Aztec code of the previous example.
+\begin{description}
+\item[Representation] As for the SVG Aztec code.
+\item[Inputs] The PostScript file model, with the template of the PostScript QR code.
+\item[Theorem] Relative to a codec of capacity at least 2,278.
+\item[Notes] The readable encoder is 3,165 bytes, more than the code can hold. So the library is a
+loader of 1,936 bytes, which decodes a Base64 string, decompresses it with PostScript's
+\verb|FlateDecode| filter and executes the result. To the model it is an opaque text like any
+other library.
+\end{description}
+
+\subsection{A Python program that prints itself in braille}
+The program \lean{braille.py} (1,191 bytes) prints its own source in NABCC, as Unicode braille
+cells. It is the example of Section~\ref{sec:braille-example}.
+\begin{description}
+\item[Representation] Strings of NABCC cells. Newlines stay newlines.
+\item[Inputs] Files have one of the shapes
+\begin{center}
+\verb|v="""x""";exec(v)| \quad or \quad \verb|v="""x""";exec("""c""")|,
+\end{center}
+which bind the string $x$ to \verb|v| and execute $x$ or $c$. The quotation $q(t)$ binds $t$
+in hexadecimal and executes $L$\verb|braille(v)|. The substitution $\sub(c,x)$ binds $x$
+and executes $c$, or \verb|v| when $c = x$. The template $a$ is $L$\verb|braille(E)|, where $E$ is
+the expression
+\begin{center}
+\verb|'v='+chr(34)+chr(34)+chr(34)+v+chr(34)+chr(34)+chr(34)+';exec(v)'+chr(10)|.
+\end{center}
+The side condition $O$ is the texts that can sit inside \verb|"""..."""|: printable ASCII and
+newlines, without \verb|"| or backslash. The domain $D$ is printable ASCII and newlines.
+\item[Theorem] Unconditional.
+\item[Notes] The Python file model is shared by the next four examples. Only the library, the
+function it defines and the alphabet change.
+\end{description}
+
+\subsection{A Python program that blinks itself in Morse code}
+The program \lean{morse.py} (1,339 bytes) opens a window and blinks its own source in International
+Morse code, white for light and black for dark, for about 17 minutes.
+\begin{description}
+\item[Representation] Sequences of Morse codes, one per character, with the prosign AA for a line
+break and a longer gap for a space.
+\item[Inputs] The Python file model, with $L$\verb|blink(E)| as the template. The domain $D$ is
+the texts in
+the 57 characters that have codes.
+\item[Theorem] Unconditional.
+\item[Notes] Morse code has no case and few symbols, so the program is written in lower-case
+letters, digits, a few punctuation marks, space and newline.
+\end{description}
+
+\subsection{A Python program that plays itself as a modem}
+The program \lean{modem.py} (1,154 bytes) plays its own source as a 300-baud Bell~103 modem, the
+classic dial-up sound, for about 40 seconds.
+\begin{description}
+\item[Representation] Sequences of 8N1 serial frames, one per byte, each bit a tone of 1,270~Hz
+(mark) or 1,070~Hz (space).
+\item[Inputs] The Python file model, with $L$\verb|play(E)| as the template. The domain $D$ is
+the ASCII
+texts.
+\item[Theorem] Unconditional.
+\item[Notes] The sound is played with the pip package \verb|miniaudio|, whose wheels include the
+audio library, so the program needs no system audio package.
+\end{description}
+
+\subsection{A Python program that hides itself in autostereograms}
+The program \lean{stereogram.py} (3,345 bytes) writes a PDF of 140 random-dot
+autostereograms~\cite{Thimbleby} in which its own source is hidden as raised 16-segment characters,
+three rows of eight to a page, after a title page.
+\begin{description}
+\item[Representation] Sequences of 16-segment patterns, one per character, from a table of 62
+characters; a line break is a filled cell.
+\item[Inputs] The Python file model, with $L$\verb|draw(E)| as the template. The domain $D$ is
+the texts in
+the 62 characters of the table.
+\item[Theorem] Unconditional.
+\item[Notes] Sixteen-segment characters have no case, so the program has no capital letters; it
+writes the capitals that PDF needs with a small helper. A $5 \times 7$ font and QR codes proved
+illegible in stereograms. Segment characters read well once each was jittered off the grid.
+The PDF is written with \verb|zlib| alone and stays under 50~MB.
+\end{description}
+
+\subsection{A Python program whose sound shows its own QR code}
+The program \lean{spectrogram.py} (2,918 bytes) makes a 37-second sound whose spectrogram is a QR
+code of the program. It plays the sound, or writes it as a WAV file.
+\begin{description}
+\item[Representation] A QR code, version 40, level L, through an abstract codec. In the spectrogram
+each module column is 0.2~s. Each module row is a pair of tones 10~Hz apart, the
+rows being 50~Hz apart. A light module sounds, while a dark one is silent.
+\item[Inputs] The Python file model, with $L$\verb|play(E)| as the template. The domain $D$ is
+the ASCII texts
+within the capacity.
+\item[Theorem] Relative to a codec of capacity at least 2,953.
+\item[Notes] The QR encoder and the synthesis are pure Python. The library is compacted so that
+the program fits in version 40. The sound design was chosen by scanning test spectrograms with a
+phone. One tone per row gave stripes, while tones filling the row blurred into the dark
+rows.
+\end{description}
+
+\subsection{A Verilog circuit that sends its own description on a serial pin}
+The file \lean{quine.v} (3,521 bytes) is a synthesizable circuit that, when simulated, drives its
+\verb|tx| pin with 9600-baud serial carrying the file.
+\begin{description}
+\item[Representation] Sequences of 8N1 frames, shared with the modem.
+\item[Inputs] Files are a line \verb|`define s "x"| followed by code. Verilog has no eval, so this
+is a data and code quine. The quotation $q(t)$ defines \verb|s| as $t$, escaped, followed by the
+circuit with \verb|full = 0|, which sends \verb|s|. The substitution $\sub(c,x)$ defines \verb|s| as
+$x$, followed by the code $c$. The template $a$ is the circuit with \verb|full = 1|, which sends the
+definition line and then \verb|s|. The side condition $O$ is printable ASCII and newlines. The
+domain $D$ is the nonempty such texts.
+\item[Theorem] Unconditional.
+\item[Notes] Icarus Verilog's preprocessor removes comments inside a \verb|`define|, even inside a
+string literal, so the code has no comments.
+\end{description}
+
+\subsection{An OpenSCAD model of itself in braille}
+The file \lean{braille.scad} (1,838 bytes) is a model of braille plates, in tactile dimensions,
+that emboss the file's own source in 6-dot Braille ASCII.
+\begin{description}
+\item[Representation] Sequences of Braille ASCII cells; a line break is a blank row.
+\item[Inputs] Files are \verb|s="x";| followed by code. OpenSCAD has no eval, so the substitution
+$\sub(c,x)$ binds $x$ to \verb|s| and runs the code $c$. The template $a$ is $L$\verb|braille(E);|.
+The side condition $O$ is printable ASCII without \verb|"| or backslash. The domain $D$ is the
+texts in the 64 characters of Braille ASCII and newline.
+\item[Theorem] Unconditional.
+\item[Notes] Braille ASCII has 64 cells and no case, so the program avoids capitals, \verb+{ | } ~+
+and the backtick. Its module body is a single statement. Top-level shapes are
+unioned implicitly. The function \verb|pow| replaces \verb|^|. The code is one line, because
+OpenSCAD drops raw newlines inside a string literal. It writes \verb|"| with \verb|chr|.
+\end{description}
+
+\subsection{A G-code program that laser-cuts a stencil of itself}
+The program \lean{stencil.ngc} (6,624 bytes), run on a laser cutter, cuts its own source out of a
+sheet as stencil lettering of $5 \times 7$ glyphs, one bar per run of pixels, so that the strips
+between rows hold every letter together.
+\begin{description}
+\item[Representation] Sequences of glyphs of the font of the SVG text example.
+\item[Inputs] G-code has no strings, so a file is a data block that stores the code in numbered
+parameters, followed by code. The quotation $q(t)$ stores $t$ and runs $L$\verb| O100CALL[0]|. The
+substitution $\sub(c,x)$ stores $x$ and runs $c$. The template $a$ is $L$\verb| O100CALL[1]|, which
+cuts the data block and then the data. Both the side condition $O$ and the domain $D$ are the texts
+in the program's alphabet that fit the data block.
+\item[Theorem] Unconditional.
+\item[Notes] The program uses 40 characters: newline, digits, a few symbols and the capitals it
+needs. It has no spaces, because LinuxCNC ignores them.
+\end{description}
+
+\begin{thebibliography}{99}
+
+\bibitem{Ershov73}
+Yu.~L. Ershov,
+\emph{Theorie der Numerierungen~I},
+Z. Math. Logik Grundlagen Math. \textbf{19} (1973), 289--388.
+
+\bibitem{Kleene38}
+S.~C. Kleene,
+\emph{On notation for ordinal numbers},
+J. Symbolic Logic \textbf{3} (1938), 150--155.
+
+\bibitem{Lean4}
+L.~de Moura and S.~Ullrich,
+\emph{The Lean~4 theorem prover and programming language},
+in: Automated Deduction -- CADE~28,
+Lecture Notes in Comput. Sci. \textbf{12699}, Springer, Cham, 2021, 625--635.
+
+\bibitem{Thimbleby}
+H.~W. Thimbleby, S.~Inglis and I.~H. Witten,
+\emph{Displaying 3D images: algorithms for single-image random-dot stereograms},
+Computer \textbf{27} (1994), no.~10, 38--48.
+
+\bibitem{Tupper}
+J.~Tupper,
+\emph{Reliable two-dimensional graphing methods for mathematical formulae with two free
+variables},
+in: Proceedings of SIGGRAPH 2001, ACM, New York, 2001, 77--86.
+
+\end{thebibliography}
+
+\end{document}

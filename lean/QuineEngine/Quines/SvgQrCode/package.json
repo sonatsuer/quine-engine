@@ -1,0 +1,14 @@
+{
+  "name": "svg-qr-quine-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "0.8.15",
+    "@zxing/library": "0.21.3",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "postscript-aztec-quine-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node check.mjs"
+  },
+  "dependencies": {
+    "@zxing/library": "0.21.3",
+    "pngjs": "7.0.0"
+  }
+}

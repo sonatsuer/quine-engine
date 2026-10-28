@@ -1,0 +1,35 @@
+/.lake
+/lean/QuineEngine/Quines/SvgQrCode/node_modules
+
+# LaTeX build artifacts (the .tex source and the .pdf are kept)
+/docs/*.aux
+/docs/*.bbl
+/docs/*.blg
+/docs/*.dvi
+/docs/*.fdb_latexmk
+/docs/*.fls
+/docs/*.log
+/docs/*.out
+/docs/*.synctex.gz
+/docs/*.toc
+/docs/*.xdv
+
+# Private files: anything named notrack-* (at any depth)
+notrack-*
+/lean/QuineEngine/Quines/*/__pycache__
+/lean/QuineEngine/Quines/PostScriptQrCode/node_modules
+/lean/QuineEngine/Quines/SvgColorQrCode/node_modules
+/lean/QuineEngine/Quines/PostScriptColorQrCode/node_modules
+/lean/QuineEngine/Quines/SvgAztec/node_modules
+/lean/QuineEngine/Quines/PostScriptAztec/node_modules
+/lean/QuineEngine/Quines/GnuplotQrCode/node_modules
+/lean/QuineEngine/Quines/LatexQrCode/node_modules
+# LaTeX build files from compiling the LaTeX quine in place (qr-code.tex and qr-code.pdf are kept)
+/lean/QuineEngine/Quines/LatexQrCode/*.aux
+/lean/QuineEngine/Quines/LatexQrCode/*.fdb_latexmk
+/lean/QuineEngine/Quines/LatexQrCode/*.fls
+/lean/QuineEngine/Quines/LatexQrCode/*.log
+/lean/QuineEngine/Quines/LatexQrCode/*.synctex*
+
+# Python virtual environment (for running the modem quine with sounddevice)
+/.venv

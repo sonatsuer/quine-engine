@@ -1,0 +1,145 @@
+name = "quine_engine"
+version = "0.1.0"
+defaultTargets = ["QuineEngine", "quine"]
+srcDir = "lean"
+
+# Read by `include_str` in lean/QuineEngine/Quines/SvgQrCode/SvgQrCode.lean; declared so edits trigger a rebuild.
+[[input_file]]
+name = "encoder"
+path = "lean/QuineEngine/Quines/SvgQrCode/encoder.js"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/SelfPlottingFormula/SelfPlottingFormula.lean.
+[[input_file]]
+name = "font"
+path = "lean/QuineEngine/Quines/SelfPlottingFormula/font.txt"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PostScriptQrCode/PostScriptQrCode.lean.
+[[input_file]]
+name = "psencoder"
+path = "lean/QuineEngine/Quines/PostScriptQrCode/encoder.ps.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/SvgText/SvgText.lean.
+[[input_file]]
+name = "drawtext"
+path = "lean/QuineEngine/Quines/SvgText/drawtext.js.inc"
+text = true
+
+[[input_file]]
+name = "font5x7"
+path = "lean/QuineEngine/Quines/SvgText/font5x7.txt"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/SvgColorQrCode/SvgColorQrCode.lean.
+[[input_file]]
+name = "drawcolor"
+path = "lean/QuineEngine/Quines/SvgColorQrCode/drawcolor.js.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PostScriptColorQrCode/PostScriptColorQrCode.lean.
+[[input_file]]
+name = "pscolor"
+path = "lean/QuineEngine/Quines/PostScriptColorQrCode/encoder.ps.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/SvgAztec/SvgAztec.lean.
+[[input_file]]
+name = "drawaztec"
+path = "lean/QuineEngine/Quines/SvgAztec/drawaztec.js.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PostScriptAztec/PostScriptAztec.lean.
+[[input_file]]
+name = "psaztec"
+path = "lean/QuineEngine/Quines/PostScriptAztec/encoder.ps.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PythonBraille/PythonBraille.lean.
+[[input_file]]
+name = "pybraille"
+path = "lean/QuineEngine/Quines/PythonBraille/braille.py.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/ScadBraille/ScadBraille.lean.
+[[input_file]]
+name = "scadbraille"
+path = "lean/QuineEngine/Quines/ScadBraille/braille.scad.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/NgcStencil/NgcStencil.lean.
+[[input_file]]
+name = "ngcstencil"
+path = "lean/QuineEngine/Quines/NgcStencil/stencil.ngc.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PythonMorse/PythonMorse.lean.
+[[input_file]]
+name = "pymorse"
+path = "lean/QuineEngine/Quines/PythonMorse/morse.py.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/GnuplotQrCode/GnuplotQrCode.lean.
+[[input_file]]
+name = "gpencoder"
+path = "lean/QuineEngine/Quines/GnuplotQrCode/encoder.gp.inc"
+text = true
+
+[[lean_lib]]
+name = "QuineEngine"
+needs = ["encoder", "font", "psencoder", "drawtext", "font5x7", "drawcolor", "pscolor", "drawaztec", "psaztec", "pybraille", "scadbraille", "ngcstencil", "pymorse", "gpencoder", "texpre", "texlib", "texepi", "pymodem", "vloga", "vlogb", "stfont", "stlib", "pyspec"]
+
+[[lean_exe]]
+name = "quine"
+root = "Main"
+
+# Read by `include_str` in lean/QuineEngine/Quines/LatexQrCode/LatexQrCode.lean.
+[[input_file]]
+name = "texpre"
+path = "lean/QuineEngine/Quines/LatexQrCode/pre.inc"
+text = true
+
+[[input_file]]
+name = "texlib"
+path = "lean/QuineEngine/Quines/LatexQrCode/library.inc"
+text = true
+
+[[input_file]]
+name = "texepi"
+path = "lean/QuineEngine/Quines/LatexQrCode/epilogue.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PythonModem/PythonModem.lean.
+[[input_file]]
+name = "pymodem"
+path = "lean/QuineEngine/Quines/PythonModem/modem.py.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/VerilogUart/VerilogUart.lean.
+[[input_file]]
+name = "vloga"
+path = "lean/QuineEngine/Quines/VerilogUart/code-a.v.inc"
+text = true
+
+[[input_file]]
+name = "vlogb"
+path = "lean/QuineEngine/Quines/VerilogUart/code-b.v.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PythonStereogram/PythonStereogram.lean.
+[[input_file]]
+name = "stfont"
+path = "lean/QuineEngine/Quines/PythonStereogram/font16.txt"
+text = true
+
+[[input_file]]
+name = "stlib"
+path = "lean/QuineEngine/Quines/PythonStereogram/stereogram.py.inc"
+text = true
+
+# Read by `include_str` in lean/QuineEngine/Quines/PythonSpectrogram/PythonSpectrogram.lean.
+[[input_file]]
+name = "pyspec"
+path = "lean/QuineEngine/Quines/PythonSpectrogram/spectrogram.py.inc"
+text = true
